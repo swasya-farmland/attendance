@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swasya | Workforce Management Cloud</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --brand-green: #2D5A27; --brand-light: #4A7c44; --rusty: #8D4B38;
+            --gold: #C5A028; --pink: #E0899C; --sidebar-dark: #1A1C1A;
+            --holiday-dark: #222; --wfh-teal: #008080; --bg-pill: #f0f2f0;
+        }
+        * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { margin: 0; background-color: #F8F9FA; display: flex; height: 100vh; overflow: hidden; }
+
+        /* UI COMPONENTS */
+        #login-screen { position: fixed; inset: 0; z-index: 9999; background: url('https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1920&q=80') center/cover; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(35px); padding: 50px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.2); width: 400px; text-align: center; }
+        .login-card input { width: 100%; padding: 15px 25px; margin: 10px 0; border-radius: 50px; border: none; outline: none; background: white; }
+        
+        .sidebar { width: 320px; background: var(--sidebar-dark); padding: 30px 25px; display: flex; flex-direction: column; border-right: 1px solid #333; overflow-y: auto; }
+        .logo-img { width: 150px; margin-bottom: 30px; align-self: center; }
+        
+        .profile-section { margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        .emp-name { color: white; font-size: 1.1rem; margin: 0; }
+        .emp-title { color: var(--gold); font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        
+        #db-status-dot { width: 10px; height: 10px; background: #555; border-radius: 50%; display: inline-block; transition: all 0.3s; margin-left: 8px; }
+        #db-status-dot.online { background: #4CAF50 !important; box-shadow: 0 0 8px #4CAF50; }
+        #db-status-dot.offline { background: #f44336 !important; box-shadow: 0 0 8px #f44336; }
+
+        .side-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .side-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .side-card-label { color: #AAA; font-size: 0.55rem; display: block; margin-bottom: 4px; }
+        .side-card-val { color: white; font-size: 1.2rem; font-weight: 700; }
+        
+        .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        header { padding: 20px 40px; background: white; border-bottom: 1px solid #EEE; display: flex; justify-content: space-between; align-items: center; }
+        .content { padding: 30px 40px; }
+        
+        .cal-box { background: white; border-radius: 30px; padding: 25px; border: 1px solid #EEE; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+        .cal-nav-row { display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #EEE; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; padding: 10px; border-radius: 20px; }
+        .cal-day { background: #fff; min-height: 110px; padding: 12px; cursor: pointer; position: relative; border-radius: 18px; border: 1px solid #f0f0f0; transition: 0.2s; }
+        .cal-day:hover { border-color: var(--brand-green); }
+        .cal-day.selected { border: 2px solid var(--brand-green) !important; background: rgba(45, 90, 39, 0.05); }
+        .cal-head { padding: 10px; text-align: center; font-size: 0.65rem; font-weight: 800; color: #BBB; text-transform: uppercase; }
+        
+        .entry { font-size: 0.58rem; padding: 5px 10px; border-radius: 50px; margin-top: 5px; color: white; font-weight: 700; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .entry-pending { background: #777 !important; border: 1px dashed #fff; opacity: 0.7; }
+        .del-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.2); border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; font-size: 10px; }
+        
+        .admin-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #333; }
+        .admin-label { color: #666; font-size: 0.6rem; font-weight: 800; margin-bottom: 10px; display: block; }
+        .admin-divider { border: 0; height: 1px; background: rgba(255,255,255,0.1); margin: 20px 0; }
+        
+        .hidden { display: none !important; }
+        
+        .btn-primary { padding: 12px 25px; background: var(--brand-green); color: white; border: none; border-radius: 50px; font-weight: 700; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 12px rgba(45, 90, 39, 0.2); }
+        .btn-primary:hover { transform: translateY(-2px); opacity: 0.95; }
+        
+        .btn-outline { background: transparent; border: 1px solid #444; color: #AAA; padding: 10px 20px; border-radius: 50px; cursor: pointer; font-size: 0.75rem; width: 100%; margin-top: 10px; transition: 0.3s; }
+        .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+        
+        select, input[type="date"], input[type="text"] { padding: 10px 20px; border-radius: 50px; border: 1.5px solid #EEE; background: #FFF; outline: none; font-weight: 600; color: #333; }
+        select:focus, input:focus { border-color: var(--brand-green); }
+
+        .entry-cl { background: var(--brand-green); }
+        .entry-sl { background: var(--rusty); }
+        .entry-el { background: var(--gold); }
+        .entry-wfh { background: var(--wfh-teal); }
+        .entry-off { background: #666; }
+
+        #user-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 40px; border-radius: 35px; width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .modal-content h3 { text-align: center; margin-bottom: 25px; color: var(--brand-green); }
+    </style>
+</head>
+<body>
+
+<div id="user-modal" class="hidden">
+    <div class="modal-content">
+        <h3>Add Workforce Member</h3>
+        <input type="text" id="new-uid" placeholder="Username">
+        <input type="text" id="new-name" placeholder="Full Name">
+        <input type="text" id="new-pw" placeholder="Password">
+        <input type="text" id="new-title" placeholder="Job Title">
+        <select id="new-role" style="width:100%; margin-bottom:10px;">
+            <option value="emp">Employee Role</option>
+            <option value="admin">Admin Role</option>
+        </select>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="saveNewUser()" class="btn-primary" style="flex:1">Save User</button>
+            <button onclick="toggleUserModal()" class="btn-outline" style="flex:1; margin-top:0; border-color:#DDD; color:#666">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="login-screen">
+    <div class="login-card">
+        <img src="Swasya Logo 10.png" style="width: 250px; margin-bottom: 30px;" onerror="this.src='https://via.placeholder.com/250x80?text=Swasya+Logo'">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn-primary" style="width:100%; margin-top:15px;" onclick="login()">Sign In</button>
+    </div>
+</div>
+
+<div class="sidebar hidden" id="sidebar">
+    <img src="Swasya Logo 3.png" class="logo-img" onerror="this.src='https://via.placeholder.com/150x50?text=Logo'">
+    <div class="profile-section">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <h2 class="emp-name" id="side-name">...</h2>
+                <span class="emp-title" id="side-title">...</span>
+            </div>
+            <span id="db-status-dot"></span>
+        </div>
+    </div>
+    <div class="side-stats">
+        <div class="side-card"><span class="side-card-label">CL LEFT</span><span class="side-card-val" id="stat-cl">-</span></div>
+        <div class="side-card"><span class="side-card-label">SL LEFT</span><span class="side-card-val" id="stat-sl">-</span></div>
+        <div class="side-card"><span class="side-card-label">EL LEFT</span><span class="side-card-val" id="stat-el">-</span></div>
+        <div class="side-card"><span class="side-card-label">LOP</span><span class="side-card-val" id="stat-lop" style="color:var(--pink)">-</span></div>
+    </div>
+    
+    <div id="akshith-approval-zone" class="admin-section hidden">
+        <span class="admin-label">PENDING APPROVALS</span>
+        <div id="pending-list"></div>
+        
+        <hr class="admin-divider">
+        
+        <span class="admin-label">ADMIN CONTROLS</span>
+        <button onclick="downloadPDFReport()" class="btn-primary" style="width:100%; font-size:0.7rem; background:var(--sidebar-dark); border:1px solid var(--gold); color:var(--gold)">Export Monthly Report</button>
+        <button onclick="toggleUserModal()" class="btn-outline" style="margin-bottom: 10px;">+ Add New User</button>
+    </div>
+
+    <div id="admin-tools" class="hidden">
+        <select id="admin-user-filter" onchange="updateUI()" style="width:100%; background:#222; color:white; border:none; margin-top:15px; padding:12px; font-size:0.75rem; border-radius: 50px;">
+            <option value="all">Full Workforce View</option>
+        </select>
+    </div>
+<br><br>
+    <button onclick="location.reload()" class="btn-outline" style="margin-top:auto">Sign Out</button>
+</div>
+
+<div class="main hidden" id="main-area">
+    <header>
+        <h1 style="color:var(--brand-green); margin:0; font-size:1.4rem;">Attendance Management Database</h1>
+        <div style="display:flex; gap:12px;">
+            <select id="leave-type" onchange="toggleComment()">
+                <option value="CL">Casual Leave</option>
+                <option value="SL">Sick Leave</option>
+                <option value="EL">Earned Leave</option>
+                <option value="WFH">WFH</option>
+                <option value="OFF">Weekly Off</option>
+            </select>
+            <input type="text" id="leave-comment" placeholder="Reason (SL/WFH)" style="display:none; width:150px;">
+            <input type="date" id="leave-date" onchange="syncDateSelection()">
+            <button onclick="submitToCloud()" class="btn-primary">Request</button>
+        </div>
+    </header>
+    <div class="content">
+        <div class="cal-box">
+            <div class="cal-nav-row">
+                <button onclick="moveMonth(-1)" class="btn-primary" style="padding:8px 20px;">&larr;</button>
+                <h2 id="cal-title" style="margin:0; font-size:1.2rem; font-weight:700; color:var(--brand-green)"></h2>
+                <button onclick="moveMonth(1)" class="btn-primary" style="padding:8px 20px;">&rarr;</button>
+            </div>
+            <div class="cal-grid" id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://pdgwefznkpxnjagpkiry.supabase.co'; 
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkZ3dlZnpua3B4bmphZ3BraXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNTMyNzMsImV4cCI6MjA4NTkyOTI3M30.1lbm8ZJr9MCZIc2AV_-cz8KqAJIgXS6MHTKqvalS-xU';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let USERS = {
+        "akshith": { pw: "swasyaAdmin1", role: "admin", name: "Akshith Shetty", title: "AVP" },
+        "nijish": { pw: "swasyaAdmin2", role: "admin", name: "Nijish", title: "Founder" },
+        "sharan": { pw: "sharan2026", role: "emp", name: "Sharan Dinesh", title: "Sales Manager" },
+        "sandeep": { pw: "sandeep2026", role: "emp", name: "Sandeep PS", title: "Sales Manager" },
+        "apeksh": { pw: "apeksh2026", role: "emp", name: "Apeksh", title: "Sales Manager" },
+        "hema": { pw: "hema2026", role: "emp", name: "Hema", title: "Sales Manager" },
+        "sandhya": { pw: "sandhya2026", role: "emp", name: "Sandhya", title: "CRM" }
+    };
+
+    const HOLIDAYS = { "2026-01-15": "Sankranti", "2026-01-26": "Republic Day", "2026-12-25": "Christmas" };
+    let session = null, logs = [], viewDate = new Date(), selectedDateStr = new Date().toISOString().split('T')[0], refreshTimer = null;
+
+    async function login() {
+        const u = document.getElementById('username').value.toLowerCase().trim();
+        const p = document.getElementById('password').value;
+        try {
+            const { data: cloudUsers } = await sb.from('workforce_users').select('*');
+            if(cloudUsers) cloudUsers.forEach(user => { USERS[user.id] = user; });
+        } catch(e) {}
+
+        if(USERS[u] && USERS[u].pw === p) {
+            session = { id: u, ...USERS[u] };
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('main-area').classList.remove('hidden');
+            document.getElementById('side-name').innerText = session.name;
+            document.getElementById('side-title').innerText = session.title;
+            document.getElementById('leave-date').value = selectedDateStr;
+            if(session.id === 'akshith') document.getElementById('akshith-approval-zone').classList.remove('hidden');
+            if(session.role === 'admin') {
+                document.getElementById('admin-tools').classList.remove('hidden');
+                const filter = document.getElementById('admin-user-filter');
+                filter.innerHTML = '<option value="all">Full Workforce View</option>';
+                Object.keys(USERS).forEach(uid => {
+                    let opt = document.createElement('option'); opt.value = uid; opt.innerText = USERS[uid].name;
+                    filter.appendChild(opt);
+                });
+            }
+            await fetchFromCloud();
+            startAutoRefresh();
+        } else alert("Invalid credentials.");
+    }
+
+    async function fetchFromCloud() {
+        const dot = document.getElementById('db-status-dot');
+        try {
+            const { data, error } = await sb.from('workforce_logs').select('*');
+            if(!error) { logs = data; dot.className = 'online'; updateUI(); } 
+            else dot.className = 'offline';
+        } catch (e) { dot.className = 'offline'; }
+    }
+
+    function startAutoRefresh() { if(refreshTimer) clearInterval(refreshTimer); refreshTimer = setInterval(fetchFromCloud, 30000); }
+
+    async function submitToCloud() {
+        const type = document.getElementById('leave-type').value;
+        const date = document.getElementById('leave-date').value;
+        const comment = document.getElementById('leave-comment').value;
+        if(!date) return alert("Select a date.");
+
+        if(type === 'OFF') {
+            const dObj = new Date(date);
+            const dayNum = dObj.getUTCDay(); 
+            if(dayNum === 0 || dayNum > 3) {
+                return alert("Weekly Off (OFF) can only be requested for Monday, Tuesday, or Wednesday.");
+            }
+        }
+
+        const { error } = await sb.from('workforce_logs').insert([{ uid: session.id, name: session.name, type, date, comment, status: 'pending' }]);
+        if(!error) await fetchFromCloud();
+    }
+
+    async function updateStatus(id, status) {
+        if(status === 'reject') await sb.from('workforce_logs').delete().eq('id', id);
+        else await sb.from('workforce_logs').update({ status }).eq('id', id);
+        await fetchFromCloud();
+    }
+
+    function toggleUserModal() { document.getElementById('user-modal').classList.toggle('hidden'); }
+    async function saveNewUser() {
+        const id = document.getElementById('new-uid').value.toLowerCase().trim(), name = document.getElementById('new-name').value, pw = document.getElementById('new-pw').value, title = document.getElementById('new-title').value, role = document.getElementById('new-role').value;
+        if(!id || !name || !pw) return alert("Fill all fields");
+        const { error } = await sb.from('workforce_users').insert([{ id, name, pw, title, role }]);
+        if(!error) { alert("User added!"); USERS[id] = { id, name, pw, title, role }; toggleUserModal(); }
+    }
+
+    function downloadPDFReport() {
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.text("Swasya Master Attendance Report", 14, 20);
+        const rows = logs.map(l => [l.name, l.date, l.type, l.status, l.comment || '-']);
+        doc.autoTable({ startY: 30, head: [['Name', 'Date', 'Type', 'Status', 'Reason']], body: rows });
+        doc.save(`Swasya_Report.pdf`);
+    }
+
+    function toggleComment() { const t = document.getElementById('leave-type').value; document.getElementById('leave-comment').style.display = (t==='SL' || t==='WFH') ? 'block' : 'none'; }
+    function selectDate(d) { selectedDateStr = d; document.getElementById('leave-date').value = d; updateUI(); }
+    function syncDateSelection() { selectedDateStr = document.getElementById('leave-date').value; updateUI(); }
+    function moveMonth(n) { viewDate.setMonth(viewDate.getMonth() + n); updateUI(); }
+
+    function updateUI() {
+        const grid = document.getElementById('calendar'); if (!grid) return; grid.innerHTML = '';
+        const filter = (session && session.role === 'admin') ? document.getElementById('admin-user-filter').value : session.id;
+        const year = viewDate.getFullYear(), month = viewDate.getMonth();
+        document.getElementById('cal-title').innerText = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(h => grid.innerHTML += `<div class="cal-head">${h}</div>`);
+        let first = new Date(year, month, 1).getDay();
+        let offset = first === 0 ? 6 : first - 1;
+        for(let i=0; i<offset; i++) grid.innerHTML += `<div class="cal-day" style="background:transparent; border:none; cursor:default"></div>`;
+        let days = new Date(year, month + 1, 0).getDate();
+        for(let d=1; d<=days; d++) {
+            const dStr = `${year}-${(month+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+            const isSel = dStr === selectedDateStr ? 'selected' : '';
+            let html = `<div class="cal-day ${isSel}" onclick="selectDate('${dStr}')"><b>${d}</b>`;
+            if(HOLIDAYS[dStr]) html += `<div class="entry" style="background:#222">${HOLIDAYS[dStr]}</div>`;
+            logs.filter(l => l.date === dStr).forEach(l => {
+                const canDel = session.id === 'akshith' ? `<span class="del-btn" onclick="event.stopPropagation(); updateStatus(${l.id}, 'reject')">×</span>` : '';
+                html += `<div class="entry entry-${l.type.toLowerCase()} ${l.status==='pending'?'entry-pending':''}">
+                    ${l.name.split(' ')[0]}: ${l.type} ${canDel}
+                </div>`;
+            });
+            grid.innerHTML += html + `</div>`;
+        }
+
+        if(session && session.id === 'akshith') {
+            const list = document.getElementById('pending-list'); list.innerHTML = '';
+            logs.filter(l => l.status === 'pending').forEach(l => {
+                list.innerHTML += `<div class="approval-item" style="color:#ccc; font-size:0.6rem; border:1px solid #333; padding:10px; margin-bottom:8px; border-radius:15px; background:rgba(255,255,255,0.02)">
+                    ${l.name} | ${l.date}<br>
+                    <div style="margin-top:8px; display:flex; gap:5px;">
+                        <button onclick="updateStatus(${l.id}, 'approved')" style="background:var(--brand-green); color:white; border:none; padding:4px 10px; cursor:pointer; font-size:9px; border-radius:20px; flex:1">Approve</button>
+                        <button onclick="updateStatus(${l.id}, 'reject')" style="background:var(--rusty); color:white; border:none; padding:4px 10px; cursor:pointer; font-size:9px; border-radius:20px; flex:1">Reject</button>
+                    </div>
+                </div>`;
+            });
+        }
+        const sUser = (filter === 'all') ? session.id : filter;
+        const limits = { CL: 6, SL: 6, EL: 12 }; 
+        if(sUser==='sharan') limits.EL=14; if(sUser==='sandeep') limits.EL=13;
+        const approved = logs.filter(l => l.uid === sUser && l.status === 'approved');
+        document.getElementById('stat-cl').innerText = limits.CL - approved.filter(l=>l.type==='CL').length;
+        document.getElementById('stat-sl').innerText = limits.SL - approved.filter(l=>l.type==='SL').length;
+        document.getElementById('stat-el').innerText = limits.EL - approved.filter(l=>l.type==='EL').length;
+        document.getElementById('stat-lop').innerText = approved.filter(l=>l.type==='LOP').length;
+    }
+</script>
+</body>
+</html>
