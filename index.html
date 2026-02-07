@@ -320,7 +320,7 @@
         }
         const sUser = (filter === 'all') ? session.id : filter;
         const limits = { CL: 6, SL: 6, EL: 12 }; 
-        if(sUser==='sharan') limits.EL=14; if(sUser==='sandeep') limits.EL=13;
+        if(sUser==='sharan') limits.EL=15; if(sUser==='sandeep') limits.EL=12;
         const approved = logs.filter(l => l.uid === sUser && l.status === 'approved');
         document.getElementById('stat-cl').innerText = limits.CL - approved.filter(l=>l.type==='CL').length;
         document.getElementById('stat-sl').innerText = limits.SL - approved.filter(l=>l.type==='SL').length;
@@ -329,4 +329,5 @@
     }
 </script>
 </body>
+
 </html>
