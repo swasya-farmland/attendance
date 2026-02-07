@@ -192,7 +192,23 @@
         "sandhya": { pw: "sandhya2026", role: "emp", name: "Sandhya", title: "CRM" }
     };
 
-    const HOLIDAYS = { "2026-01-15": "Sankranti", "2026-01-26": "Republic Day", "2026-12-25": "Christmas" };
+    const HOLIDAYS = { 
+        "2026-01-15": "Makara Sankranti", 
+        "2026-01-26": "Republic Day", 
+        "2026-03-19": "Ugadi Festival",
+        "2026-04-14": "Dr. Ambedkar Jayanti",
+        "2026-05-01": "May Day / Labour Day",
+        "2026-05-28": "Bakrid / Eid-ul-Adha",
+        "2026-08-15": "Independence Day",
+        "2026-08-26": "Eid e Milad",
+        "2026-10-02": "Gandhi Jayanti",
+        "2026-10-20": "Mahanavami / Ayudha Puja",
+        "2026-10-21": "Vijayadashami / Dussehra",
+        "2026-11-10": "Balipadyami / Deepavali",
+        "2026-12-25": "Christmas Day",
+        "2026-12-31": "New Year"
+    };
+
     let session = null, logs = [], viewDate = new Date(), selectedDateStr = new Date().toISOString().split('T')[0], refreshTimer = null;
 
     async function login() {
