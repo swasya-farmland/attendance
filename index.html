@@ -285,14 +285,6 @@
         if(!error) { alert("User added!"); USERS[id] = { id, name, pw, title, role }; toggleUserModal(); }
     }
 
-    function downloadPDFReport() {
-        const { jsPDF } = window.jspdf; const doc = new jsPDF();
-        doc.text("Swasya Master Attendance Report", 14, 20);
-        const rows = logs.map(l => [l.name, l.date, l.type, l.status, l.comment || '-']);
-        doc.autoTable({ startY: 30, head: [['Name', 'Date', 'Type', 'Status', 'Reason']], body: rows });
-        doc.save(`Swasya_Report.pdf`);
-    }
-
     function toggleComment() { const t = document.getElementById('leave-type').value; document.getElementById('leave-comment').style.display = (t==='SL' || t==='WFH') ? 'block' : 'none'; }
     function selectDate(d) { selectedDateStr = d; document.getElementById('leave-date').value = d; updateUI(); }
     function syncDateSelection() { selectedDateStr = document.getElementById('leave-date').value; updateUI(); }
