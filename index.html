@@ -200,6 +200,7 @@
         "2026-05-01": "May Day / Labour Day",
         "2026-05-28": "Bakrid / Eid-ul-Adha",
         "2026-08-15": "Independence Day",
+        "2026-08-26": "Onam",
         "2026-08-26": "Eid e Milad",
         "2026-10-02": "Gandhi Jayanti",
         "2026-10-20": "Mahanavami / Ayudha Puja",
@@ -336,7 +337,7 @@
         }
         const sUser = (filter === 'all') ? session.id : filter;
         const limits = { CL: 6, SL: 6, EL: 12 }; 
-        if(sUser==='sharan') { limits.EL=14; limits.CL=7; }
+        if(sUser==='sharan') { limits.EL=14; limits.CL=9; }
         if(sUser==='sandeep') { limits.EL=12; }
         const approved = logs.filter(l => l.uid === sUser && l.status === 'approved');
         document.getElementById('stat-cl').innerText = limits.CL - approved.filter(l=>l.type==='CL').length;
